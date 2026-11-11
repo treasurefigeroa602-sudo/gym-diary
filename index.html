@@ -70,6 +70,8 @@ input { text-align: center; }
 .row-btns button { flex: 1; font-size: 14px; padding: 6px; }
 .list-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
 .list-item:first-of-type { border-top: 0; }
+.w-open { flex: 1; background: none; border: 0; padding: 4px 0; text-align: left; font-size: 14px; color: var(--text); }
+.w-details { display: grid; gap: 8px; padding: 4px 0 12px 16px; font-size: 14px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .grid2 label { font-size: 13px; color: var(--muted); }
 .chart { width: 100%; height: auto; display: block; }
@@ -195,6 +197,10 @@ function toast(text) {
 const ALL_EX = [];
 PLAN.forEach(d => d.ex.forEach(e => { if (!ALL_EX.some(x => x.id === e.id)) ALL_EX.push(e); }));
 
+// Названия упражнений, убранных из плана (для просмотра старых тренировок)
+const OLD_NAMES = { incline_db: 'Жим гантелей на наклонной 30°', hang_raise: 'Подъём ног в висе', incline_curl: 'Бицепс на наклонной скамье' };
+const exName = id => (ALL_EX.find(e => e.id === id) || {}).name || OLD_NAMES[id] || id;
+
 // Последний сохранённый результат по упражнению
 function lastResult(exId) {
   for (let i = db.workouts.length - 1; i >= 0; i--) {
@@ -209,6 +215,7 @@ let tab = 'workout';
 let curDay = (PLAN.find(d => d.wd === new Date().getDay()) || PLAN[0]).id;
 let histEx = ALL_EX[0].id;
 let histMetric = 'weight';
+let openW = null; // id раскрытой тренировки в истории
 
 // ===== Вкладка «Тренировка» =====
 function getDraft(day) {
@@ -316,8 +323,12 @@ function renderHistory() {
   if (!db.workouts.length) h += '<p class="meta">Пока нет сохранённых тренировок</p>';
   h += db.workouts.slice().reverse().map(w => {
     const d = PLAN.find(p => p.id === w.day);
-    return `<div class="list-item"><span>${fmtDate(w.date)} · ${d ? d.short : ''} · ${Object.keys(w.ex).length} упр.</span>
-      <button class="danger" data-delw="${w.id}">Удалить</button></div>`;
+    const open = openW === w.id;
+    // По нажатию на строку раскрываем все упражнения тренировки
+    const details = open ? '<div class="w-details">' + Object.entries(w.ex).map(([id, sets]) =>
+      `<div><b>${esc(exName(id))}</b><br><span class="meta">${esc(fmtSets(sets))}</span></div>`).join('') + '</div>' : '';
+    return `<div class="list-item"><button class="w-open" data-openw="${w.id}">${open ? '▾' : '▸'} ${fmtDate(w.date)} · ${d ? d.short : ''} · ${Object.keys(w.ex).length} упр.</button>
+      <button class="danger" data-delw="${w.id}">Удалить</button></div>${details}`;
   }).join('');
   h += '</div>';
 
@@ -428,6 +439,7 @@ $('#app').addEventListener('click', e => {
     const sets = db.drafts[curDay][ds.del];
     if (sets.length > 1) { sets.pop(); save(); render(); }
   }
+  else if (ds.openw) { openW = openW === +ds.openw ? null : +ds.openw; render(); }
   else if (ds.delw) {
     if (confirm('Удалить эту тренировку?')) { db.workouts = db.workouts.filter(w => w.id !== +ds.delw); save(); render(); }
   }
