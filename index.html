@@ -25,6 +25,7 @@
   --warn: #f5b84b;
   --danger: #f2666a;
   --input: #0d1014;
+  --coach: #b48cff;
 }
 * { box-sizing: border-box; }
 body {
@@ -60,6 +61,9 @@ input { text-align: center; }
 .tip { color: var(--muted); font-size: 13px; font-style: italic; }
 .prev { font-size: 14px; margin-top: 6px; color: var(--muted); }
 .hint { font-size: 14px; margin-top: 4px; color: var(--warn); }
+.coach { border-color: var(--coach); font-size: 14px; }
+.coach b { color: var(--coach); }
+.coach-ex { font-size: 14px; margin-top: 6px; color: var(--coach); }
 .set-head, .set { display: grid; grid-template-columns: 24px 1fr 1fr 48px; gap: 8px; align-items: center; }
 .set-head { margin-top: 10px; font-size: 12px; color: var(--muted); text-align: center; }
 .set { margin-top: 6px; }
@@ -108,7 +112,7 @@ const PLAN = [
       { id: 'incline_smith', name: 'Жим в Смите на наклонной 30°', sets: 4, min: 8, max: 10, rest: '3 мин', tip: 'Гриф к верху груди, стопоры чуть выше груди' },
       // id прежний (lat_pd), чтобы сохранились уже записанные данные
       { id: 'lat_pd', name: 'Подтягивания', sets: 4, min: 8, max: 10, rest: '2 мин', tip: 'С отягощением — пиши вес в «доп. кг»', bw: true },
-      { id: 'smith_ohp', name: 'Жим в Смите сидя (спинка 75–80°)', sets: 3, min: 8, max: 10, rest: '2 мин', tip: 'Ориентир: 50–55 кг' },
+      { id: 'smith_ohp', name: 'Жим в Смите сидя (спинка 75–80°)', sets: 3, min: 8, max: 10, rest: '2 мин' },
       { id: 'dips', name: 'Брусья', sets: 3, min: 8, max: 12, rest: '2 мин', tip: 'С отягощением — пиши вес в «доп. кг»', bw: true },
       { id: 'cable_row', name: 'Тяга горизонтального блока', sets: 3, min: 10, max: 10, rest: '2 мин' },
       { id: 'rope_pd', name: 'Разгибания на блоке с канатом', sets: 3, min: 10, max: 12, rest: '1,5 мин' },
@@ -118,7 +122,7 @@ const PLAN = [
   { id: 'tue', wd: 2, short: 'Вт · Низ', title: 'Вторник · Низ (сила)',
     sub: 'Опускание 2–3 сек, подъём 1 сек. 1–2 повтора в запасе.',
     ex: [
-      { id: 'leg_press', name: 'Жим ногами', sets: 4, min: 8, max: 10, rest: '3 мин', tip: 'Ориентир: 100–120 кг блинами' },
+      { id: 'leg_press', name: 'Жим ногами', sets: 4, min: 8, max: 10, rest: '3 мин' },
       { id: 'hyper', name: 'Гиперэкстензия с блином', sets: 4, min: 10, max: 12, rest: '2 мин', tip: 'Спина ровная, наклон за счёт таза' },
       { id: 'seated_curl', name: 'Сгибания ног лёжа', sets: 3, min: 10, max: 12, rest: '1,5 мин' },
       { id: 'leg_ext', name: 'Разгибания ног', sets: 3, min: 10, max: 12, rest: '1,5 мин' },
@@ -128,8 +132,8 @@ const PLAN = [
   { id: 'thu', wd: 4, short: 'Чт · Верх', title: 'Четверг · Верх (объём)',
     sub: 'Без пауз в суставах. Последний подход в изоляции — до отказа.',
     ex: [
-      { id: 'hammer_press', name: 'Жим в «Хаммере» сидя', sets: 4, min: 12, max: 15, rest: '2–2,5 мин', tip: 'Ориентир: 60–65 кг' },
-      { id: 'tbar', name: 'Тяга Т-грифа с упором в грудь', sets: 4, min: 12, max: 12, rest: '2 мин', tip: 'Ориентир: 40–45 кг блинами' },
+      { id: 'hammer_press', name: 'Жим в «Хаммере» сидя', sets: 4, min: 12, max: 15, rest: '2–2,5 мин' },
+      { id: 'tbar', name: 'Тяга Т-грифа с упором в грудь', sets: 4, min: 12, max: 12, rest: '2 мин' },
       { id: 'pd_neutral', name: 'Тяга верхнего блока нейтральным хватом', sets: 3, min: 12, max: 15, rest: '1,5–2 мин', tip: 'Вверху полностью растянуть широчайшие' },
       { id: 'lat_raise', name: 'Махи в стороны в тренажёре', sets: 4, min: 12, max: 15, rest: '1,5 мин' },
       { id: 'cross', name: 'Сведения в кроссовере', sets: 2, min: 12, max: 15, rest: '1,5 мин' },
@@ -140,7 +144,7 @@ const PLAN = [
   { id: 'fri', wd: 5, short: 'Пт · Низ', title: 'Пятница · Низ (объём)',
     sub: 'Без пауз в суставах. Последний подход в изоляции — до отказа.',
     ex: [
-      { id: 'hack', name: 'Гакк-приседания', sets: 4, min: 12, max: 12, rest: '2,5 мин', tip: 'Ориентир: 50–60 кг блинами' },
+      { id: 'hack', name: 'Гакк-приседания', sets: 4, min: 12, max: 12, rest: '2,5 мин' },
       { id: 'lying_curl', name: 'Сгибания ног лёжа', sets: 4, min: 12, max: 15, rest: '1,5 мин' },
       { id: 'lunges', name: 'Шагающие выпады с гантелями', sets: 3, min: 12, max: 14, rest: '2 мин', tip: 'Повторы = шагов на каждую ногу' },
       { id: 'calf_seat', name: 'Икры сидя', sets: 4, min: 15, max: 15, rest: '1,5 мин' },
@@ -238,6 +242,10 @@ function renderWorkout() {
   let h = '<div class="days">' + PLAN.map(d =>
     `<button data-day="${d.id}" class="${d.id === curDay ? 'active' : ''}">${d.short}</button>`).join('') + '</div>';
   h += `<h2>${day.title}</h2><div class="sub">${day.sub}</div>`;
+  // Комментарии тренера из notes.json
+  const notes = (NOTES && NOTES.days && NOTES.days[day.id]) || {};
+  const exNotes = notes.ex || {};
+  if (notes.general) h += `<div class="card coach"><b>Тренер</b>${NOTES.updated ? ` · ${fmtDate(NOTES.updated)}` : ''}<br>${esc(notes.general)}</div>`;
 
   day.ex.forEach(ex => {
     const prev = lastResult(ex.id);
@@ -251,6 +259,7 @@ function renderWorkout() {
       if (ex.max && prev.sets.length >= ex.sets && prev.sets.every(s => num(s.r) >= ex.max))
         h += `<div class="hint">↑ Все подходы на верхней границе — прибавь 2,5–5% веса</div>`;
     }
+    if (exNotes[ex.id]) h += `<div class="coach-ex">🎯 ${esc(exNotes[ex.id])}</div>`;
     h += `<div class="set-head"><span>#</span><span>${ex.bw ? 'доп. кг' : 'кг'}</span><span>повторы</span><span></span></div>`;
     dr[ex.id].forEach((s, i) => {
       h += `<div class="set"><span class="n">${i + 1}</span>
@@ -459,6 +468,13 @@ $('#importFile').addEventListener('change', e => {
 
 // Офлайн-режим
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+// Комментарии тренера: грузим notes.json (без сети — из кэша)
+let NOTES = null;
+fetch('notes.json', { cache: 'no-store' })
+  .then(r => r.ok ? r.json() : null)
+  .then(n => { NOTES = n; if (tab === 'workout') render(); })
+  .catch(() => {});
 
 render();
 </script>

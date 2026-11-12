@@ -1,6 +1,6 @@
 // Офлайн-режим: сначала сеть (чтобы получать обновления), без сети — из кэша
-const CACHE = 'gym-diary-v1';
-const FILES = ['./', './index.html', './manifest.json', './icon.svg'];
+const CACHE = 'gym-diary-v2';
+const FILES = ['./', './index.html', './manifest.json', './icon.svg', './notes.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)));
