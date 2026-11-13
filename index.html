@@ -386,9 +386,12 @@ function renderHistory() {
     const d = PLAN.find(p => p.id === w.day);
     const open = openW === w.id;
     // По нажатию на строку раскрываем все упражнения тренировки
+    // Разбор тренера из notes.json (ключ — дата тренировки)
+    const review = NOTES && NOTES.reviews && NOTES.reviews[w.date];
     const details = open ? '<div class="w-details">' + Object.entries(w.ex).map(([id, sets]) =>
-      `<div><b>${esc(exName(id))}</b><br><span class="meta">${esc(fmtSets(sets))}</span></div>`).join('') + '</div>' : '';
-    return `<div class="list-item"><button class="w-open" data-openw="${w.id}">${open ? '▾' : '▸'} ${fmtDate(w.date)} · ${d ? d.short : ''} · ${Object.keys(w.ex).length} упр.</button>
+      `<div><b>${esc(exName(id))}</b><br><span class="meta">${esc(fmtSets(sets))}</span></div>`).join('') +
+      (review ? `<div class="card coach"><b>Разбор тренера</b><br>${esc(review).replace(/\n/g, '<br>')}</div>` : '') + '</div>' : '';
+    return `<div class="list-item"><button class="w-open" data-openw="${w.id}">${open ? '▾' : '▸'} ${fmtDate(w.date)} · ${d ? d.short : ''} · ${Object.keys(w.ex).length} упр.${review ? ' 📝' : ''}</button>
       <button class="danger" data-delw="${w.id}">Удалить</button></div>${details}`;
   }).join('');
   h += '</div>';
@@ -552,7 +555,7 @@ if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catc
 let NOTES = null;
 fetch('notes.json', { cache: 'no-store' })
   .then(r => r.ok ? r.json() : null)
-  .then(n => { NOTES = n; if (tab === 'workout') render(); })
+  .then(n => { NOTES = n; if (tab !== 'measures') render(); })
   .catch(() => {});
 
 render();
