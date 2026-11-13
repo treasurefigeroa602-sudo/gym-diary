@@ -180,6 +180,57 @@ function save() {
 // Просим браузер не удалять данные при нехватке места
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist();
 
+// ===== Синхронизация с закрытым репозиторием GitHub =====
+// Токен и состояние хранятся отдельно от данных, в файл экспорта не попадают
+const SYNC_URL = 'https://api.github.com/repos/treasurefigeroa602-sudo/gym-diary-data/contents/data.json';
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+let syncState = {};
+try { syncState = JSON.parse(lsGet('gym_sync')) || {}; } catch (e) {}
+let syncing = false;
+
+function setSync(patch) {
+  Object.assign(syncState, patch);
+  lsSet('gym_sync', JSON.stringify(syncState));
+  if (tab === 'history') render();
+}
+// Вызывается после любого изменения тренировок или замеров
+function markDirty() { setSync({ pending: true }); trySync(); }
+
+// UTF-8 → base64 (GitHub API принимает содержимое файла в base64)
+function b64(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = '';
+  bytes.forEach(b => { bin += String.fromCharCode(b); });
+  return btoa(bin);
+}
+
+async function trySync() {
+  const token = lsGet('gym_token');
+  if (!token || !syncState.pending || syncing || !navigator.onLine) return;
+  syncing = true;
+  try {
+    const headers = { Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json' };
+    // Нужен sha текущего файла, чтобы его перезаписать
+    let sha;
+    const g = await fetch(SYNC_URL, { headers, cache: 'no-store' });
+    if (g.ok) sha = (await g.json()).sha;
+    else if (g.status !== 404) throw g.status;
+    const content = b64(JSON.stringify({ workouts: db.workouts, measures: db.measures }, null, 1));
+    const p = await fetch(SYNC_URL, {
+      method: 'PUT', headers,
+      body: JSON.stringify({ message: 'Синхронизация ' + today(), content, sha })
+    });
+    if (!p.ok) throw p.status;
+    setSync({ pending: false, last: new Date().toISOString(), error: '' });
+  } catch (e) {
+    const msg = e === 401 ? 'неверный или просроченный токен' : (e === 403 || e === 404) ? 'у токена нет доступа к gym-diary-data' : 'нет связи, повторю позже';
+    setSync({ error: msg });
+  }
+  syncing = false;
+}
+window.addEventListener('online', trySync);
+
 // ===== Утилиты =====
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -287,6 +338,7 @@ function finishWorkout() {
   db.workouts.push({ id: Date.now(), date: today(), day: day.id, ex });
   delete db.drafts[day.id];
   save();
+  markDirty();
   toast('Тренировка сохранена');
   window.scrollTo(0, 0);
   render();
@@ -341,6 +393,20 @@ function renderHistory() {
   }).join('');
   h += '</div>';
 
+  // Состояние синхронизации
+  const hasToken = !!lsGet('gym_token');
+  let st = 'Не настроена — вставьте токен';
+  if (hasToken) {
+    if (syncState.error && syncState.pending) st = '⚠️ Не отправлено: ' + syncState.error;
+    else if (syncState.pending) st = '⏳ Ждёт отправки';
+    else if (syncState.last) st = '✅ Отправлено ' + new Date(syncState.last).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    else st = 'Токен сохранён';
+  }
+  h += `<div class="card"><h3>Синхронизация с тренером</h3>
+    <p class="meta">${esc(st)}</p>
+    <input type="password" id="tokenInput" placeholder="${hasToken ? 'токен сохранён' : 'github_pat_…'}" autocomplete="off" style="text-align:left">
+    <div class="row-btns"><button id="saveToken">Сохранить токен</button><button id="syncNow">Отправить сейчас</button></div></div>`;
+
   h += `<div class="card"><h3>Резервная копия</h3>
     <p class="meta">Данные хранятся только в этом телефоне. Время от времени сохраняйте копию в файл.</p>
     <div class="row-btns"><button id="export">Сохранить в файл</button><button id="import">Загрузить из файла</button></div></div>`;
@@ -365,6 +431,7 @@ function importData(file) {
       if (!confirm('Заменить текущие данные данными из файла?')) return;
       localStorage.setItem(KEY, JSON.stringify(d));
       db = load();
+      markDirty();
       toast('Данные загружены');
       render();
     } catch (e) { alert('Файл не подходит'); }
@@ -400,6 +467,7 @@ function saveMeasure() {
   if (!any) { alert('Введите хотя бы одно значение'); return; }
   db.measures.push(r);
   save();
+  markDirty();
   toast('Замер сохранён');
   render();
 }
@@ -450,15 +518,26 @@ $('#app').addEventListener('click', e => {
   }
   else if (ds.openw) { openW = openW === +ds.openw ? null : +ds.openw; render(); }
   else if (ds.delw) {
-    if (confirm('Удалить эту тренировку?')) { db.workouts = db.workouts.filter(w => w.id !== +ds.delw); save(); render(); }
+    if (confirm('Удалить эту тренировку?')) { db.workouts = db.workouts.filter(w => w.id !== +ds.delw); save(); markDirty(); render(); }
   }
   else if (ds.delm) {
-    if (confirm('Удалить этот замер?')) { db.measures = db.measures.filter(m => m.id !== +ds.delm); save(); render(); }
+    if (confirm('Удалить этот замер?')) { db.measures = db.measures.filter(m => m.id !== +ds.delm); save(); markDirty(); render(); }
   }
   else if (b.id === 'finish') finishWorkout();
   else if (b.id === 'saveMeasure') saveMeasure();
   else if (b.id === 'export') exportData();
   else if (b.id === 'import') $('#importFile').click();
+  else if (b.id === 'saveToken') {
+    const t = $('#tokenInput').value.trim();
+    if (!t) { alert('Вставьте токен'); return; }
+    lsSet('gym_token', t);
+    toast('Токен сохранён');
+    markDirty(); // сразу отправляем все записи
+  }
+  else if (b.id === 'syncNow') {
+    if (!lsGet('gym_token')) { alert('Сначала сохраните токен'); return; }
+    markDirty();
+  }
 });
 
 $('#importFile').addEventListener('change', e => {
@@ -477,6 +556,7 @@ fetch('notes.json', { cache: 'no-store' })
   .catch(() => {});
 
 render();
+trySync(); // если что-то не отправилось в прошлый раз
 </script>
 </body>
 </html>

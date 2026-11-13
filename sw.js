@@ -1,5 +1,5 @@
 // Офлайн-режим: сначала сеть (чтобы получать обновления), без сети — из кэша
-const CACHE = 'gym-diary-v2';
+const CACHE = 'gym-diary-v3';
 const FILES = ['./', './index.html', './manifest.json', './icon.svg', './notes.json'];
 
 self.addEventListener('install', e => {
@@ -14,6 +14,8 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  // Запросы к GitHub API (синхронизация) не кэшируем
+  if (new URL(e.request.url).origin !== location.origin) return;
   e.respondWith(
     fetch(e.request)
       .then(res => {
